@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 // Main Calculator Endpoint
-app.post('/calculate', (req, res) => {
+app.post('/', (req, res) => {
     const { expression } = req.body;
     
     // Strict input validation: Allow ONLY digits, spaces, and standard math symbols
