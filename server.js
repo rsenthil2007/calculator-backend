@@ -4,7 +4,7 @@ const app = express();
 
 // Enable Cross-Origin Resource Sharing (CORS)
 // Allows requests coming from your HostingRaja application domain
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 // Main Calculator Endpoint
