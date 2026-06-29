@@ -77,7 +77,7 @@ app.post('/', (req, res) => {
     try {
 
         // Evaluate expression
-        const result = Function(`"use strict"; return (${expr})`)();
+        const result = Function(`return (${expr})`)();
 
         if (
             typeof result !== "number" ||
