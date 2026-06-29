@@ -1,42 +1,130 @@
+```javascript
 const express = require('express');
 const cors = require('cors');
+
 const app = express();
 
-// Enable Cross-Origin Resource Sharing (CORS)
-// Allows requests coming from your HostingRaja application domain
-app.use(cors({ origin: '*' }));
+/* ---------------------------------------
+   Middleware
+---------------------------------------- */
+
+// Allow requests from your frontend.
+// During development, allow all origins.
+// Later, replace "*" with your website domain.
+app.use(cors());
+
 app.use(express.json());
 
-// Main Calculator Endpoint
-app.post('/calculate', (req, res) => {
+// Optional: Simple security headers
+app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    next();
+});
+
+/* ---------------------------------------
+   Health Check
+---------------------------------------- */
+
+app.get('/', (req, res) => {
+    res.json({
+        status: "success",
+        message: "Calculator API is running."
+    });
+});
+
+/* ---------------------------------------
+   Calculator Endpoint
+---------------------------------------- */
+
+app.post('/', (req, res) => {
+
     const { expression } = req.body;
 
-    // Strict input validation: Allow ONLY digits, spaces, and standard math symbols
-    // Fixed: End-of-string anchor '$' corrected from the escaped '\$' typo
-    if (/^[0-9\+\-\*\/\.\s]+$/.test(expression)) {
-        try {
-            // Safely execute the string expression 
-            const result = Function(`return ${expression}`)();
-
-            // Check for division by zero or invalid calculations
-            if (result === null || !isFinite(result)) {
-                return res.status(400).json({ status: 'error', message: 'Math anomaly' });
-            }
-
-            res.json({ status: 'success', result: Number(result.toFixed(4)) });
-        } catch (err) {
-            res.status(400).json({ status: 'error', message: 'Syntax error' });
-        }
-    } else {
-        res.status(400).json({ status: 'error', message: 'Forbidden characters' });
+    // Validate request body
+    if (typeof expression !== "string") {
+        return res.status(400).json({
+            status: "error",
+            message: "Expression is required."
+        });
     }
+
+    const expr = expression.trim();
+
+    if (expr.length === 0) {
+        return res.status(400).json({
+            status: "error",
+            message: "Expression cannot be empty."
+        });
+    }
+
+    // Allow:
+    // Digits
+    // + - * /
+    // Decimal point
+    // Parentheses
+    // Spaces
+    const allowedPattern = /^[0-9+\-*/().\s]+$/;
+
+    if (!allowedPattern.test(expr)) {
+        return res.status(400).json({
+            status: "error",
+            message: "Forbidden characters detected."
+        });
+    }
+
+    try {
+
+        // Evaluate expression
+        const result = Function(`"use strict"; return (${expr})`)();
+
+        if (
+            typeof result !== "number" ||
+            Number.isNaN(result) ||
+            !Number.isFinite(result)
+        ) {
+            return res.status(400).json({
+                status: "error",
+                message: "Invalid mathematical result."
+            });
+        }
+
+        return res.json({
+            status: "success",
+            expression: expr,
+            result: Number(result.toFixed(4))
+        });
+
+    } catch (error) {
+
+        return res.status(400).json({
+            status: "error",
+            message: "Invalid mathematical expression."
+        });
+
+    }
+
 });
 
-// Root endpoint to verify infrastructure status in your browser
-app.get('/', (req, res) => {
-    res.send('Calculator API is running smoothly.');
+/* ---------------------------------------
+   404 Handler
+---------------------------------------- */
+
+app.use((req, res) => {
+    res.status(404).json({
+        status: "error",
+        message: "Endpoint not found."
+    });
 });
 
-// Render dynamically provides a port via process.env.PORT
+/* ---------------------------------------
+   Start Server
+---------------------------------------- */
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server executing successfully on port ${PORT}`));
+
+app.listen(PORT, () => {
+    console.log(`Calculator API is running on port ${PORT}`);
+});
+```
